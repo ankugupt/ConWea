@@ -12,7 +12,7 @@ from nltk.corpus import stopwords
 from util import *
 
 
-def main(dataset_path, temp_dir):
+def main(dataset_path, temp_dir, tau):
     def dump_bert_vecs(df, dump_dir):
         print("Getting BERT vectors...")
         embedding = BertEmbeddings('bert-base-uncased')
