@@ -50,7 +50,8 @@ def main(dataset_path, temp_dir):
                     except Exception as e:
                         except_counter += 1
                         print("Exception Counter while dumping BERT: ", except_counter, sentence_ind, index, word, e)
-
+                        
+    '''
     def compute_tau(label_seedwords_dict, bert_dump_dir):
         print("Computing Similarity Threshold..")
         seedword_medians = []
@@ -64,6 +65,7 @@ def main(dataset_path, temp_dir):
                 except Exception as e:
                     print("Exception: ", e)
         return median(seedword_medians)
+     '''
 
     def cluster(tok_vecs, tau):
         def should_stop(cc):
@@ -181,11 +183,7 @@ def main(dataset_path, temp_dir):
     bert_dump_dir = temp_dir + "bert/"
     cluster_dump_dir = temp_dir + "clusters/"
     df = pickle.load(open(pkl_dump_dir + "df.pkl", "rb"))
-    with open(pkl_dump_dir + "seedwords.json") as fp:
-        label_seedwords_dict = json.load(fp)
     dump_bert_vecs(df, bert_dump_dir)
-    tau = compute_tau(label_seedwords_dict, bert_dump_dir)
-    print("Cluster Similarity Threshold: ", tau)
     cluster_words(tau, bert_dump_dir, cluster_dump_dir)
     df_contextualized, word_cluster_map = contextualize(df, cluster_dump_dir)
     pickle.dump(df_contextualized, open(pkl_dump_dir + "df_contextualized.pkl", "wb"))
@@ -196,8 +194,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset_path', type=str, default='./data/nyt/')
     parser.add_argument('--temp_dir', type=str, default='/tmp/')
+    parser.add_argument('--tau', type=float, default=0.7) 
     parser.add_argument('--gpu_id', type=str, default="cpu")
     args = parser.parse_args()
     if args.gpu_id != "cpu":
         flair.device = torch.device('cuda:' + str(args.gpu_id))
-    main(dataset_path=args.dataset_path, temp_dir=args.temp_dir)
+    main(dataset_path=args.dataset_path, temp_dir=args.temp_dir, tau=args.tau)
