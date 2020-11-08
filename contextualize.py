@@ -137,11 +137,14 @@ def main(dataset_path, temp_dir, tau):
         for index, row in df.iterrows():
             if index % 100 == 0:
                 print("Finished rows: " + str(index) + " out of " + str(len(df)))
-            line = row["sentence"]
+            line = row["news"]
             sentences = sent_tokenize(line)
             for sentence_ind, sent in enumerate(sentences):
                 sentence = Sentence(sent, use_tokenizer=True)
-                embedding.embed(sentence)
+                try=:
+                    embedding.embed(sentence)
+                except: 
+                    print("error in creating embedding") 
                 for token_ind, token in enumerate(sentence):
                     word = token.text
                     if word in stop_words:
@@ -173,8 +176,11 @@ def main(dataset_path, temp_dir, tau):
 
                     if len(cc) > 1:
                         tok_vec = token.embedding.cpu().numpy()
-                        cluster = get_cluster(tok_vec, cc)
-                        sentence.tokens[token_ind].text = word + "$" + str(cluster)
+                        try:
+                            cluster = get_cluster(tok_vec, cc)
+                            sentence.tokens[token_ind].text = word + "$" + str(cluster)
+                        except: 
+                            sentence.tokens[token_ind].text = word + "$" + "0" 
                 sentences[sentence_ind] = to_tokenized_string(sentence)
             df["news"][index] = " . ".join(sentences)
         return df, word_cluster
