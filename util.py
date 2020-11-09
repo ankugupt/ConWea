@@ -23,7 +23,7 @@ def compute_pairwise_cosine_sim(tok_vecs):
     return cos_sim
 
 
-def read_bert_vectors(word, bert_dump_dir):
+def read_bert_vectors(word, word_embedding):
     '''
     word_clean = word.translate(str.maketrans('', '', string.punctuation))
     if os.path.isdir(os.path.join(bert_dump_dir, word_clean)):
@@ -51,7 +51,7 @@ def read_bert_vectors(word, bert_dump_dir):
         embed = word_embedding[word]
     else:
         raise Exception(word + "not found") 
-     
+    tok_vecs = [] 
     for vec in embed: 
         try: 
             tok_vecs.append(vec)
