@@ -11,6 +11,8 @@ from nltk import sent_tokenize
 from nltk.corpus import stopwords
 from util import *
 
+word_embedding = dict()
+
 
 def main(dataset_path, temp_dir, tau):
     def dump_bert_vecs(df, dump_dir):
@@ -39,17 +41,29 @@ def main(dataset_path, temp_dir, tau):
                     word = word.translate(str.maketrans('', '', string.punctuation))
                     if word in stop_words or "/" in word or len(word) == 0:
                         continue
+                    '''
                     word_dump_dir = dump_dir + word
                     os.makedirs(word_dump_dir, exist_ok=True)
                     fname = word_dump_dir + "/" + str(word_counter[word]) + ".pkl"
                     word_counter[word] += 1
+                    '''
                     vec = token.embedding.cpu().numpy()
+                    try:
+                        if word in word_embedding.keys():
+                            word_embedding[word].append(vec)
+                        else:
+                            word_embedding[word]=vec
+                    except:
+                        print("error while dumping into dictionary") 
+                    #vec = token.embedding.cpu().numpy()
+                    '''
                     try:
                         with open(fname, "wb") as handler:
                             pickle.dump(vec, handler)
                     except Exception as e:
                         except_counter += 1
                         print("Exception Counter while dumping BERT: ", except_counter, sentence_ind, index, word, e)
+                    '''
                         
     '''
     def compute_tau(label_seedwords_dict, bert_dump_dir):
@@ -99,14 +113,14 @@ def main(dataset_path, temp_dir, tau):
 
     def cluster_words(tau, bert_dump_dir, cluster_dump_dir):
         print("Clustering words..")
-        dir_set = get_relevant_dirs(bert_dump_dir)
+        #dir_set = get_relevant_dirs(bert_dump_dir)
         except_counter = 0
-        print("Length of DIR_SET: ", len(dir_set))
-        for word_index, word in enumerate(dir_set):
+        #print("Length of DIR_SET: ", len(dir_set))
+        for word_index, word in word_embedding :
             if word_index % 100 == 0:
                 print("Finished clustering words: " + str(word_index))
             try:
-                tok_vecs = read_bert_vectors(word, bert_dump_dir)
+                tok_vecs = read_bert_vectors(word, word_embedding)
                 cc = cluster(tok_vecs, tau)
                 word_cluster_dump_dir = cluster_dump_dir + word
                 os.makedirs(word_cluster_dump_dir, exist_ok=True)
