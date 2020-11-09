@@ -11,11 +11,11 @@ from nltk import sent_tokenize
 from nltk.corpus import stopwords
 from util import *
 
-word_embedding = dict()
+
 
 
 def main(dataset_path, temp_dir, tau):
-    def dump_bert_vecs(df, dump_dir):
+    def dump_bert_vecs(df, word_embedding):
         print("Getting BERT vectors...")
         embedding = BertEmbeddings('bert-base-uncased')
         word_counter = defaultdict(int)
@@ -24,6 +24,7 @@ def main(dataset_path, temp_dir, tau):
         except_counter = 0
 
         for index, row in df.iterrows():
+            print(index)
             if index % 100 == 0:
                 print("Finished sentences: " + str(index) + " out of " + str(len(df)))
             line = row["news"]
@@ -48,13 +49,10 @@ def main(dataset_path, temp_dir, tau):
                     word_counter[word] += 1
                     '''
                     vec = token.embedding.cpu().numpy()
-                    try:
-                        if word in word_embedding.keys():
-                            word_embedding[word].append(vec)
-                        else:
-                            word_embedding[word]=vec
-                    except:
-                        print("error while dumping into dictionary") 
+                    word_embedding[word].append(vec)
+                    
+                    #except:
+                    #    print("error while dumping into dictionary") 
                     #vec = token.embedding.cpu().numpy()
                     '''
                     try:
@@ -111,15 +109,16 @@ def main(dataset_path, temp_dir, tau):
             cc = km.cluster_centers_
         return cc
 
-    def cluster_words(tau, bert_dump_dir, cluster_dump_dir):
+    def cluster_words(tau, word_embedding, cluster_dump_dir):
         print("Clustering words..")
         #dir_set = get_relevant_dirs(bert_dump_dir)
         except_counter = 0
         #print("Length of DIR_SET: ", len(dir_set))
-        for word_index, word in word_embedding :
+        for word_index, word in enumerate(word_embedding.keys()) :
             if word_index % 100 == 0:
                 print("Finished clustering words: " + str(word_index))
             try:
+                print("heello")
                 tok_vecs = read_bert_vectors(word, word_embedding)
                 cc = cluster(tok_vecs, tau)
                 word_cluster_dump_dir = cluster_dump_dir + word
@@ -155,7 +154,7 @@ def main(dataset_path, temp_dir, tau):
             sentences = sent_tokenize(line)
             for sentence_ind, sent in enumerate(sentences):
                 sentence = Sentence(sent, use_tokenizer=True)
-                try=:
+                try:
                     embedding.embed(sentence)
                 except: 
                     print("error in creating embedding") 
@@ -200,11 +199,12 @@ def main(dataset_path, temp_dir, tau):
         return df, word_cluster
 
     pkl_dump_dir = dataset_path
+    word_embedding = defaultdict(list)
     bert_dump_dir = temp_dir + "bert/"
     cluster_dump_dir = temp_dir + "clusters/"
     df = pickle.load(open(pkl_dump_dir + "df.pkl", "rb"))
-    dump_bert_vecs(df, bert_dump_dir)
-    cluster_words(tau, bert_dump_dir, cluster_dump_dir)
+    dump_bert_vecs(df, word_embedding)
+    cluster_words(tau, word_embedding, cluster_dump_dir)
     df_contextualized, word_cluster_map = contextualize(df, cluster_dump_dir)
     pickle.dump(df_contextualized, open(pkl_dump_dir + "df_contextualized.pkl", "wb"))
     pickle.dump(word_cluster_map, open(pkl_dump_dir + "word_cluster_map.pkl", "wb"))
