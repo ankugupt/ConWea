@@ -24,6 +24,7 @@ def compute_pairwise_cosine_sim(tok_vecs):
 
 
 def read_bert_vectors(word, bert_dump_dir):
+    '''
     word_clean = word.translate(str.maketrans('', '', string.punctuation))
     if os.path.isdir(os.path.join(bert_dump_dir, word_clean)):
         word_dir = os.path.join(bert_dump_dir, word_clean)
@@ -41,6 +42,22 @@ def read_bert_vectors(word, bert_dump_dir):
             tok_vecs.append(vec)
         except Exception as e:
             print("Exception while reading BERT pickle file: ", path, e)
+    '''
+    
+    word_clean = word.translate(str.maketrans('', '', string.punctuation))
+    if word_clean in word_embedding.keys():
+        embed = word_embedding[word]
+    elif word in word_embedding.keys():
+        embed = word_embedding[word]
+    else:
+        raise Exception(word + "not found") 
+     
+    for vec in embed: 
+        try: 
+            tok_vecs.append(vec)
+        except:
+            print("Error while reading dictionary") 
+       
     return tok_vecs
 
 
