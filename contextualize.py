@@ -11,11 +11,8 @@ from nltk import sent_tokenize
 from nltk.corpus import stopwords
 from util import *
 
-
-
-
-def main(dataset_path, temp_dir, tau):
-    def dump_bert_vecs(df, word_embedding):
+def main(dataset_path, temp_dir):
+    def dump_bert_vecs(df, dump_dir):
         print("Getting BERT vectors...")
         embedding = BertEmbeddings('bert-base-uncased')
         word_counter = defaultdict(int)
@@ -24,7 +21,6 @@ def main(dataset_path, temp_dir, tau):
         except_counter = 0
 
         for index, row in df.iterrows():
-            print(index)
             if index % 100 == 0:
                 print("Finished sentences: " + str(index) + " out of " + str(len(df)))
             line = row["news"]
@@ -40,30 +36,20 @@ def main(dataset_path, temp_dir, tau):
                 for token_ind, token in enumerate(sentence):
                     word = token.text
                     word = word.translate(str.maketrans('', '', string.punctuation))
-                    if word in stop_words or "/" in word or len(word) == 0:
+                    if word in stop_words or "/" in word or len(word) == 0 or word_cnt[word]<20:
                         continue
-                    '''
                     word_dump_dir = dump_dir + word
                     os.makedirs(word_dump_dir, exist_ok=True)
                     fname = word_dump_dir + "/" + str(word_counter[word]) + ".pkl"
                     word_counter[word] += 1
-                    '''
                     vec = token.embedding.cpu().numpy()
-                    word_embedding[word].append(vec)
-                    
-                    #except:
-                    #    print("error while dumping into dictionary") 
-                    #vec = token.embedding.cpu().numpy()
-                    '''
                     try:
                         with open(fname, "wb") as handler:
                             pickle.dump(vec, handler)
                     except Exception as e:
                         except_counter += 1
                         print("Exception Counter while dumping BERT: ", except_counter, sentence_ind, index, word, e)
-                    '''
-                        
-    '''
+
     def compute_tau(label_seedwords_dict, bert_dump_dir):
         print("Computing Similarity Threshold..")
         seedword_medians = []
@@ -77,7 +63,6 @@ def main(dataset_path, temp_dir, tau):
                 except Exception as e:
                     print("Exception: ", e)
         return median(seedword_medians)
-     '''
 
     def cluster(tok_vecs, tau):
         def should_stop(cc):
@@ -109,17 +94,16 @@ def main(dataset_path, temp_dir, tau):
             cc = km.cluster_centers_
         return cc
 
-    def cluster_words(tau, word_embedding, cluster_dump_dir):
+    def cluster_words(tau, bert_dump_dir, cluster_dump_dir):
         print("Clustering words..")
-        #dir_set = get_relevant_dirs(bert_dump_dir)
+        dir_set = get_relevant_dirs(bert_dump_dir)
         except_counter = 0
-        #print("Length of DIR_SET: ", len(dir_set))
-        for word_index, word in enumerate(word_embedding.keys()) :
+        print("Length of DIR_SET: ", len(dir_set))
+        for word_index, word in enumerate(dir_set):
             if word_index % 100 == 0:
                 print("Finished clustering words: " + str(word_index))
             try:
-                print("heello")
-                tok_vecs = read_bert_vectors(word, word_embedding)
+                tok_vecs = read_bert_vectors(word, bert_dump_dir)
                 cc = cluster(tok_vecs, tau)
                 word_cluster_dump_dir = cluster_dump_dir + word
                 os.makedirs(word_cluster_dump_dir, exist_ok=True)
@@ -150,20 +134,17 @@ def main(dataset_path, temp_dir, tau):
         for index, row in df.iterrows():
             if index % 100 == 0:
                 print("Finished rows: " + str(index) + " out of " + str(len(df)))
-            line = row["news"]
+            line = row["sentence"]
             sentences = sent_tokenize(line)
             for sentence_ind, sent in enumerate(sentences):
                 sentence = Sentence(sent, use_tokenizer=True)
-                try:
-                    embedding.embed(sentence)
-                except: 
-                    print("error in creating embedding") 
+                embedding.embed(sentence)
                 for token_ind, token in enumerate(sentence):
                     word = token.text
                     if word in stop_words:
                         continue
                     word_clean = word.translate(str.maketrans('', '', string.punctuation))
-                    if len(word_clean) == 0 or word_clean in stop_words or "/" in word_clean:
+                    if len(word_clean) == 0 or word_clean in stop_words or "/" in word_clean or word_cnt[word]<20:
                         continue
                     try:
                         cc = word_cluster[word_clean]
@@ -189,22 +170,41 @@ def main(dataset_path, temp_dir, tau):
 
                     if len(cc) > 1:
                         tok_vec = token.embedding.cpu().numpy()
-                        try:
-                            cluster = get_cluster(tok_vec, cc)
-                            sentence.tokens[token_ind].text = word + "$" + str(cluster)
-                        except: 
-                            sentence.tokens[token_ind].text = word + "$" + "0" 
+                        cluster = get_cluster(tok_vec, cc)
+                        sentence.tokens[token_ind].text = word + "$" + str(cluster)
                 sentences[sentence_ind] = to_tokenized_string(sentence)
-            df["news"][index] = " . ".join(sentences)
+            df["sentence"][index] = " . ".join(sentences)
         return df, word_cluster
 
     pkl_dump_dir = dataset_path
-    word_embedding = defaultdict(list)
     bert_dump_dir = temp_dir + "bert/"
     cluster_dump_dir = temp_dir + "clusters/"
-    df = pickle.load(open(pkl_dump_dir + "df.pkl", "rb"))
-    dump_bert_vecs(df, word_embedding)
-    cluster_words(tau, word_embedding, cluster_dump_dir)
+    df = pd.read_csv(pkl_dump_dir + "df.tsv", header=0, sep='\t')
+    import pandas as pd
+    import re
+    from nltk.corpus import stopwords
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    import numpy as np 
+    def review_to_wordlist(review, remove_stopwords=False):
+        review = re.sub("[^a-zA-Z]", " ", review)
+        words = review.lower().split()
+        if remove_stopwords:
+            stops = set(stopwords.words("english"))
+            words = [w for w in words if not w in stops and len(w) > 1]
+        return words
+  
+    traindata = []
+    for i in range(0, len(all["news"])):
+        traindata.append(review_to_wordlist(df["news"][i], True))
+
+    word_cnt = {}
+    for sentence in traindata:
+        for word in sentence:
+            word_cnt[word]= word_cnt.get(word,0)+1
+    dump_bert_vecs(df, bert_dump_dir)
+    tau = 0.70 
+    print("Cluster Similarity Threshold: ", tau)
+    cluster_words(tau, bert_dump_dir, cluster_dump_dir)
     df_contextualized, word_cluster_map = contextualize(df, cluster_dump_dir)
     pickle.dump(df_contextualized, open(pkl_dump_dir + "df_contextualized.pkl", "wb"))
     pickle.dump(word_cluster_map, open(pkl_dump_dir + "word_cluster_map.pkl", "wb"))
@@ -214,9 +214,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset_path', type=str, default='./data/nyt/')
     parser.add_argument('--temp_dir', type=str, default='/tmp/')
-    parser.add_argument('--tau', type=float, default=0.7) 
     parser.add_argument('--gpu_id', type=str, default="cpu")
     args = parser.parse_args()
     if args.gpu_id != "cpu":
         flair.device = torch.device('cuda:' + str(args.gpu_id))
-    main(dataset_path=args.dataset_path, temp_dir=args.temp_dir, tau=args.tau)
+    main(dataset_path=args.dataset_path, temp_dir=args.temp_dir)
