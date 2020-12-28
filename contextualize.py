@@ -16,7 +16,7 @@ from util import *
 def main(dataset_path, temp_dir):
     def dump_bert_vecs(df, dump_dir):
         print("Getting BERT vectors...")
-        embedding = TransformerWordEmbeddings('roberta-base',layers=-1)
+        embedding = TransformerWordEmbeddings('roberta-base',layers='-1')
         word_counter = defaultdict(int)
         stop_words = set(stopwords.words('english'))
         stop_words.add("would")
@@ -131,7 +131,7 @@ def main(dataset_path, temp_dir):
             return max_sim_id
 
         print("Contextualizing the corpus..")
-        embedding = BertEmbeddings('bert-base-uncased')
+        embedding = TransformerWordEmbeddings('roberta-base',layers='-1')
         stop_words = set(stopwords.words('english'))
         stop_words.add('would')
         except_counter = 0
@@ -180,7 +180,7 @@ def main(dataset_path, temp_dir):
                         cluster = get_cluster(tok_vec, cc)
                         sentence.tokens[token_ind].text = word + "$" + str(cluster)
                 sentences[sentence_ind] = to_tokenized_string(sentence)
-            df["sentence"][index] = " . ".join(sentences)
+            df["news"][index] = " . ".join(sentences)
         return df, word_cluster
 
     pkl_dump_dir = dataset_path
@@ -209,10 +209,10 @@ def main(dataset_path, temp_dir):
     for sentence in traindata:
         for word in sentence:
             word_cnt[word]= word_cnt.get(word,0)+1
-    dump_bert_vecs(df, bert_dump_dir)
+    #dump_bert_vecs(df, bert_dump_dir)
     tau = 0.70 
     print("Cluster Similarity Threshold: ", tau)
-    cluster_words(tau, bert_dump_dir, cluster_dump_dir)
+    #cluster_words(tau, bert_dump_dir, cluster_dump_dir)
     df_contextualized, word_cluster_map = contextualize(df, cluster_dump_dir)
     pickle.dump(df_contextualized, open(pkl_dump_dir + "df_contextualized.pkl", "wb"))
     pickle.dump(word_cluster_map, open(pkl_dump_dir + "word_cluster_map.pkl", "wb"))
