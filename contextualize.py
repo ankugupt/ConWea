@@ -7,24 +7,29 @@ from statistics import median
 from sklearn.cluster import KMeans
 from flair.data import Sentence
 from flair.embeddings import BertEmbeddings
+from flair.embeddings import TransformerWordEmbeddings
 from nltk import sent_tokenize
 from nltk.corpus import stopwords
+import pandas as pd
 from util import *
 
 def main(dataset_path, temp_dir):
     def dump_bert_vecs(df, dump_dir):
         print("Getting BERT vectors...")
-        embedding = BertEmbeddings('bert-base-uncased')
+        embedding = TransformerWordEmbeddings('roberta-base',layers=-1)
         word_counter = defaultdict(int)
         stop_words = set(stopwords.words('english'))
         stop_words.add("would")
         except_counter = 0
+        key = list(word_cnt.keys())
 
         for index, row in df.iterrows():
+            print(index)
             if index % 100 == 0:
                 print("Finished sentences: " + str(index) + " out of " + str(len(df)))
             line = row["news"]
             sentences = sent_tokenize(line)
+
             for sentence_ind, sent in enumerate(sentences):
                 sentence = Sentence(sent, use_tokenizer=True)
                 try:
@@ -36,8 +41,9 @@ def main(dataset_path, temp_dir):
                 for token_ind, token in enumerate(sentence):
                     word = token.text
                     word = word.translate(str.maketrans('', '', string.punctuation))
-                    if word in stop_words or "/" in word or len(word) == 0 or word_cnt[word]<20:
-                        continue
+                    if word in stop_words or "/" in word or len(word) == 0 or (word not in key) or word_cnt[word]<40:
+                      #print("word")
+                      continue
                     word_dump_dir = dump_dir + word
                     os.makedirs(word_dump_dir, exist_ok=True)
                     fname = word_dump_dir + "/" + str(word_counter[word]) + ".pkl"
@@ -130,6 +136,7 @@ def main(dataset_path, temp_dir):
         stop_words.add('would')
         except_counter = 0
         word_cluster = {}
+        key = list(word_cnt.keys())
 
         for index, row in df.iterrows():
             if index % 100 == 0:
@@ -144,7 +151,7 @@ def main(dataset_path, temp_dir):
                     if word in stop_words:
                         continue
                     word_clean = word.translate(str.maketrans('', '', string.punctuation))
-                    if len(word_clean) == 0 or word_clean in stop_words or "/" in word_clean or word_cnt[word]<20:
+                    if len(word_clean) == 0 or word_clean in stop_words or "/" in word_clean or (word not in key) or word_cnt[word]<20:
                         continue
                     try:
                         cc = word_cluster[word_clean]
@@ -179,6 +186,7 @@ def main(dataset_path, temp_dir):
     pkl_dump_dir = dataset_path
     bert_dump_dir = temp_dir + "bert/"
     cluster_dump_dir = temp_dir + "clusters/"
+    import pandas as pd
     df = pd.read_csv(pkl_dump_dir + "df.tsv", header=0, sep='\t')
     import pandas as pd
     import re
@@ -187,14 +195,14 @@ def main(dataset_path, temp_dir):
     import numpy as np 
     def review_to_wordlist(review, remove_stopwords=False):
         review = re.sub("[^a-zA-Z]", " ", review)
-        words = review.lower().split()
+        words = review.split()
         if remove_stopwords:
             stops = set(stopwords.words("english"))
             words = [w for w in words if not w in stops and len(w) > 1]
         return words
   
     traindata = []
-    for i in range(0, len(all["news"])):
+    for i in range(0, len(df["news"])):
         traindata.append(review_to_wordlist(df["news"][i], True))
 
     word_cnt = {}
