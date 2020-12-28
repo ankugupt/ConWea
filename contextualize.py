@@ -141,7 +141,7 @@ def main(dataset_path, temp_dir):
         for index, row in df.iterrows():
             if index % 100 == 0:
                 print("Finished rows: " + str(index) + " out of " + str(len(df)))
-            line = row["sentence"]
+            line = row["news"]
             sentences = sent_tokenize(line)
             for sentence_ind, sent in enumerate(sentences):
                 sentence = Sentence(sent, use_tokenizer=True)
@@ -151,7 +151,7 @@ def main(dataset_path, temp_dir):
                     if word in stop_words:
                         continue
                     word_clean = word.translate(str.maketrans('', '', string.punctuation))
-                    if len(word_clean) == 0 or word_clean in stop_words or "/" in word_clean or (word not in key) or word_cnt[word]<20:
+                    if len(word_clean) == 0 or word_clean in stop_words or "/" in word_clean or (word not in key) or word_cnt[word]<40:
                         continue
                     try:
                         cc = word_cluster[word_clean]
