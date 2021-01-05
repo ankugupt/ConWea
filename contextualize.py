@@ -24,6 +24,8 @@ def main(dataset_path, temp_dir):
         key = list(word_cnt.keys())
 
         for index, row in df.iterrows():
+            file1 = open("progress.txt","w+")
+            file1.write(str(index))
             print(index)
             if index % 100 == 0:
                 print("Finished sentences: " + str(index) + " out of " + str(len(df)))
@@ -41,7 +43,7 @@ def main(dataset_path, temp_dir):
                 for token_ind, token in enumerate(sentence):
                     word = token.text
                     word = word.translate(str.maketrans('', '', string.punctuation))
-                    if word in stop_words or "/" in word or len(word) == 0 or (word not in key) or word_cnt[word]<40:
+                    if word in stop_words or "/" in word or len(word) == 0 or (word not in key) or word_cnt[word]<10:
                       #print("word")
                       continue
                     word_dump_dir = dump_dir + word
@@ -139,6 +141,8 @@ def main(dataset_path, temp_dir):
         key = list(word_cnt.keys())
 
         for index, row in df.iterrows():
+            file1 = open("progress.txt","w+")
+            file1.write(str(index))
             if index % 100 == 0:
                 print("Finished rows: " + str(index) + " out of " + str(len(df)))
             line = row["news"]
@@ -151,7 +155,7 @@ def main(dataset_path, temp_dir):
                     if word in stop_words:
                         continue
                     word_clean = word.translate(str.maketrans('', '', string.punctuation))
-                    if len(word_clean) == 0 or word_clean in stop_words or "/" in word_clean or (word not in key) or word_cnt[word]<40:
+                    if len(word_clean) == 0 or word_clean in stop_words or "/" in word_clean or (word not in key) or word_cnt[word]<10:
                         continue
                     try:
                         cc = word_cluster[word_clean]
@@ -194,7 +198,7 @@ def main(dataset_path, temp_dir):
     from sklearn.feature_extraction.text import TfidfVectorizer
     import numpy as np 
     def review_to_wordlist(review, remove_stopwords=False):
-        review = re.sub("[^a-zA-Z]", " ", review)
+        #review = re.sub("[^a-zA-Z]", " ", review)
         words = review.split()
         if remove_stopwords:
             stops = set(stopwords.words("english"))
@@ -209,10 +213,10 @@ def main(dataset_path, temp_dir):
     for sentence in traindata:
         for word in sentence:
             word_cnt[word]= word_cnt.get(word,0)+1
-    #dump_bert_vecs(df, bert_dump_dir)
-    tau = 0.70 
+    dump_bert_vecs(df, bert_dump_dir)
+    tau = 0.85
     print("Cluster Similarity Threshold: ", tau)
-    #cluster_words(tau, bert_dump_dir, cluster_dump_dir)
+    cluster_words(tau, bert_dump_dir, cluster_dump_dir)
     df_contextualized, word_cluster_map = contextualize(df, cluster_dump_dir)
     pickle.dump(df_contextualized, open(pkl_dump_dir + "df_contextualized.pkl", "wb"))
     pickle.dump(word_cluster_map, open(pkl_dump_dir + "word_cluster_map.pkl", "wb"))
